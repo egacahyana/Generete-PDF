@@ -1,18 +1,13 @@
 {
-  "version": 3,
-  "routes": [
-    {
-      "src": "^/api/(.*)$",
-      "dest": "/api/index.py"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "experimentalServices": {
+    "app": {
+      "entrypoint": ".",
+      "routePrefix": "/"
     },
-    {
-      "handle": "filesystem"
-    }
-  ],
-  "functions": {
-    "api/index.py": {
-      "runtime": "python3.11",
-      "maxDuration": 10
+    "api": {
+      "entrypoint": "api/index.py",
+      "routePrefix": "/api"
     }
   }
 }
