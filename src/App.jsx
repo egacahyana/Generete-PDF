@@ -1,7 +1,7 @@
 import { useState } from "react";
 import pdfLogo from "./asset/logoPdf.png";
 
-const ACCEPTED_TYPES = ".txt,.md,.json,.csv,.docx,.xlsx,.pptx";
+const ACCEPTED_TYPES = ".txt,.md,.json,.csv,.docx,.xlsx,.pptx,.png,.jpg,.jpeg";
 
 export default function App() {
   const [files, setFiles] = useState([]);
@@ -87,8 +87,8 @@ export default function App() {
         <p className="eyebrow">KONVERSI FILE</p>
         <h1 id="page-title">Ubah file menjadi PDF</h1>
         <p className="intro">
-          Unggah satu atau beberapa file teks dan Office. Setiap file akan
-          dikonversi menjadi PDF.
+          Unggah satu atau beberapa file teks, Office, atau gambar. Setiap file
+          akan dikonversi menjadi PDF.
         </p>
 
         <label
@@ -154,7 +154,7 @@ export default function App() {
         )}
 
         <p className="file-types">
-          Format yang didukung: TXT, MD, JSON, CSV, DOCX, XLSX, PPTX
+          Format yang didukung: TXT, MD, JSON, CSV, DOCX, XLSX, PPTX, PNG, JPG, JPEG
         </p>
         {files.length > 1 && (
           <p className="selection-note">

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
+from PIL import Image, UnidentifiedImageError
 
 from fpdf import FPDF
 from docx import Document
@@ -13,7 +14,10 @@ from pptx import Presentation
 
 app = FastAPI()
 
-SUPPORTED_EXTENSIONS = {".txt", ".md", ".json", ".csv", ".docx", ".xlsx", ".pptx"}
+SUPPORTED_EXTENSIONS = {
+    ".txt", ".md", ".json", ".csv", ".docx", ".xlsx", ".pptx",
+    ".png", ".jpg", ".jpeg",
+}
 
 def safe_filename(title: str) -> str:
     """Sanitasi nama file untuk semua platform."""
@@ -33,6 +37,26 @@ def generate_pdf(title: str, content: str) -> bytes:
     pdf.ln(10)
     pdf.set_font("Helvetica", size=12)
     pdf.multi_cell(0, 7, txt=sanitize_text(content))
+    return bytes(pdf.output())
+
+def generate_image_pdf(image_bytes: bytes) -> bytes:
+    with Image.open(io.BytesIO(image_bytes)) as image:
+        if image.format not in {"PNG", "JPEG"}:
+            raise ValueError("Only PNG and JPEG images are supported.")
+        orientation = "L" if image.width > image.height else "P"
+        image.verify()
+
+    pdf = FPDF(orientation=orientation, unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=False)
+    pdf.add_page()
+    pdf.image(
+        io.BytesIO(image_bytes),
+        x=0,
+        y=0,
+        w=pdf.w,
+        h=pdf.h,
+        keep_aspect_ratio=True,
+    )
     return bytes(pdf.output())
 
 def extract_office_text(extension: str, file_bytes: bytes) -> str:
@@ -81,7 +105,7 @@ def extract_office_text(extension: str, file_bytes: bytes) -> str:
 
 @app.post("/api/generate-pdf")
 async def convert_files(files: list[UploadFile] = File(...)):
-    """Convert one or more uploaded text or Office documents to PDF."""
+    """Convert uploaded text, Office documents, or images to PDF."""
     if not files:
         raise HTTPException(status_code=422, detail="Pilih setidaknya satu file untuk dikonversi.")
 
@@ -96,14 +120,23 @@ async def convert_files(files: list[UploadFile] = File(...)):
                 status_code=415,
                 detail=(
                     "Format file tidak didukung. Gunakan TXT, MD, JSON, CSV, "
-                    "DOCX, XLSX, atau PPTX."
+                    "DOCX, XLSX, PPTX, PNG, JPG, atau JPEG."
                 ),
             )
 
         title = Path(original_filename).stem or "document"
         file_bytes = await file.read()
-        content = extract_office_text(extension, file_bytes)
-        pdf_bytes = generate_pdf(title, content)
+        if extension in {".png", ".jpg", ".jpeg"}:
+            try:
+                pdf_bytes = generate_image_pdf(file_bytes)
+            except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as error:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"File {original_filename} bukan gambar PNG atau JPEG yang valid.",
+                ) from error
+        else:
+            content = extract_office_text(extension, file_bytes)
+            pdf_bytes = generate_pdf(title, content)
         output_filename = safe_filename(title)
 
         base_name = output_filename[:-4]
